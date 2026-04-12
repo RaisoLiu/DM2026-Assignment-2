@@ -26,7 +26,7 @@ Continuation of Assignment 1 \texttt{Real\_World\_Classification.ipynb}, using t
 
 \subsection{1(a) 5-Fold Cross-Validation: 4$\times$4 Hyperparameter Grid}
 
-We perform 5-fold CV (\texttt{KFold(n\_splits=5, shuffle=True, random\_state=40)}) on the training set (350 samples) over 16 combinations of learning rate and L2 regularization strength. The model uses \texttt{n\_iteration=10000}, \texttt{val\_ratio=0.2}.
+We perform 5-fold CV (\texttt{KFold(n\_splits=5, shuffle=True, random\_state=40)}) on the training set (350 samples) over 16 combinations of learning rate and L2 regularization strength. The model uses \texttt{n\_iteration=10000}, \texttt{val\_ratio=0.2} (an internal validation split used only for early stopping within each fold; it does not affect the outer CV evaluation, which always scores on the held-out fold).
 
 \begin{table}[H]
 \centering
@@ -45,7 +45,7 @@ lr=0.5   & 0.7171 & 0.6886 & 0.5229 & 0.4657 \\
 
 \subsection{1(b) Top 2 Hyperparameter Settings --- Test Evaluation}
 
-The top 2 settings by CV accuracy are retrained on the full training set and evaluated on the held-out test set (150 samples).
+The top 2 settings by CV accuracy are retrained on the full training set and evaluated on the held-out test set (150 samples). Note: the second-best CV accuracy (0.7286) is shared by three settings: (0.01, 2.0), (0.01, 4.0), and (0.1, 2.0). We select (0.1, 2.0) as \#2 by choosing the setting with the largest learning rate (faster convergence) and smallest $\lambda$ (least regularization).
 
 \begin{table}[H]
 \centering
@@ -73,7 +73,7 @@ Rank & Setting & Accuracy & Precision & Recall & F1-score \\
 \section{Q2: SVM Classification (15 pts)}
 %==============================================================================
 
-We use the \texttt{mobile\_price.csv} dataset (2000 samples, 20 features, 4 balanced classes). Data is split 60/20/20 into train/validation/test sets (\texttt{random\_state=42}). F1-score uses \texttt{macro} averaging throughout.
+We use the \texttt{mobile\_price.csv} dataset (2000 samples, 20 features, 4 balanced classes). Data is split 60/20/20 into train/validation/test sets (\texttt{random\_state=42}). We use \texttt{sklearn.svm.SVC} with the default RBF kernel ($\gamma = \text{scale}$). Features are used without additional scaling, as the RBF kernel with $\gamma = 1/(n\_\text{features} \cdot \text{Var}(X))$ already adapts to feature variance. F1-score uses \texttt{macro} averaging throughout.
 
 \subsection{2(a) SVM with C=1.0}
 
@@ -232,76 +232,75 @@ After \texttt{StandardScaler}, all features have mean $\approx 0$ and std $= 1$.
     \item \textbf{PCA captures very little variance:} The first two principal components explain only 16.5\% of total variance. The 2D scatter plot shows heavy overlap among all 4 classes, indicating that the class structure is distributed across many dimensions rather than being concentrated in the top PCs.
     \item \textbf{Both K-Means approaches fail:} ARI values of 0.0060 (all features) and 0.0017 (PCA 2D) are near zero, meaning the clustering is essentially random with respect to the true labels.
     \item \textbf{Dimensionality reduction hurts slightly:} K-Means on all 20 features (ARI=0.0060) marginally outperforms K-Means on 2D PCA (ARI=0.0017), as expected since reducing to 2D discards 83.5\% of the variance.
-    \item \textbf{K-Means is fundamentally unsuited here:} K-Means assumes spherical, equally-sized clusters in Euclidean space. The mobile price classes likely have complex, non-linear decision boundaries. This contrasts sharply with Q2's SVM results ($>$95\% accuracy), confirming that supervised methods with non-linear kernels (RBF) are necessary for this task.
+    \item \textbf{K-Means fails to recover label-consistent partitions:} K-Means assumes spherical, equally-sized clusters in Euclidean space, which does not match the structure of this dataset. While supervised SVM (Q2) achieves $>$95\% accuracy by exploiting label information to learn non-linear decision boundaries, K-Means --- as an unsupervised method --- cannot leverage labels and relies solely on Euclidean distance, which is insufficient to separate these price-range classes. This is not an apples-to-apples comparison, but it highlights that label information is critical for this classification task.
 \end{itemize}
 
 %==============================================================================
 \section{Q5: Enhancing K-Means with Association Rule Mining (35 pts)}
 %==============================================================================
 
-\subsection{Motivation and Approach}
+\subsection{Motivation and Inspiration}
 
-Standard K-Means treats all features equally and ignores class-discriminative structure. We propose a two-pronged enhancement using association rule mining:
+Standard K-Means treats all features equally and cannot distinguish discriminative features from noise. We propose a \textbf{semi-supervised} enhancement that uses association rule mining to guide clustering. The approach explicitly leverages class labels during feature engineering, while K-Means itself remains unsupervised.
+
+\textbf{Inspirations:}
+\begin{itemize}[nosep]
+    \item \textit{TF-IDF-style feature importance}: We adapt the idea of term specificity (IDF) to use association rule lift as a proxy for discriminative power. Features that appear in high-lift rules for specific classes are analogous to terms with high IDF --- they carry more information.
+    \item \textit{Supervised discretization} (Fayyad \& Irani, 1993): Class labels guide the mining process to identify feature patterns that maximize class separability, similar to how supervised binning optimizes split points.
+    \item \textit{Feature augmentation for clustering}: Enriching the feature space with auxiliary pattern-based features before applying standard clustering, as discussed in lecture on pattern-based clustering.
+\end{itemize}
+
+\subsection{Method Design}
 
 \begin{enumerate}
-    \item \textbf{Rule-Guided Feature Weighting:} All features are discretized (3:4:3 value range split) and association rules are mined per class using FP-Growth (\texttt{min\_support=0.3}, confidence $\geq 0.5$, lift $\geq 1.0$). Features that appear frequently in high-lift rules across classes receive higher weights. The resulting weights range from 1.0 to 3.0 and are applied to the standardized features before clustering.
-    \item \textbf{Class-Stratified Pattern Features:} The top 5 most discriminative patterns (ranked by lift $\times$ confidence) are selected from each class's rules, yielding 20 binary features. Each feature indicates whether a sample matches a specific class-associated itemset.
+    \item \textbf{Rule-Guided Feature Weighting (semi-supervised):} All 20 features are discretized (3:4:3 value range split) and association rules are mined \textit{per class} using FP-Growth (\texttt{min\_support=0.3}, confidence $\geq 0.5$, lift $\geq 1.0$). For each original feature, we accumulate the lift values from all rules in which the feature appears across all classes. The resulting importance scores are normalized to weights in $[1.0, 3.0]$ and applied to the standardized features. This step is explicitly label-guided.
+    \item \textbf{Class-Stratified Pattern Features (semi-supervised):} The top 5 most discriminative patterns (ranked by lift $\times$ confidence) are selected from each class's rules, yielding 20 binary features indicating whether a sample matches each class-associated itemset.
 \end{enumerate}
 
 The augmented feature matrix combines 20 weighted original features with 20 scaled pattern features (40 total).
 
 \subsection{Evaluation Protocol}
 
-Both baseline and improved K-Means are evaluated using the same protocol:
-\begin{itemize}
+All variants are evaluated using the same protocol:
+\begin{itemize}[nosep]
     \item 5 random seeds: \{0, 10, 42, 100, 999\}
     \item \textbf{Hungarian algorithm} (\texttt{scipy.optimize.linear\_sum\_assignment}) maps cluster IDs to true labels optimally before computing accuracy, precision, recall, and F1 (all macro-averaged).
+    \item \textbf{Clustering-native metrics}: ARI (Adjusted Rand Index) and NMI (Normalized Mutual Information) are also reported, which do not require Hungarian mapping.
 \end{itemize}
 
-\subsection{Results}
+\subsection{Ablation Study}
+
+To isolate the contribution of each component, we compare four variants:
 
 \begin{table}[H]
 \centering
-\caption{Per-seed and average comparison of baseline vs.\ improved K-Means}
-\begin{tabular}{clcccc}
+\caption{Ablation study: average performance across 5 seeds}
+\begin{tabular}{lcccccc}
 \toprule
-Seed & Method & Accuracy & Precision & Recall & F1 \\
+Method & Accuracy & Precision & Recall & F1 & ARI & NMI \\
 \midrule
-\multirow{2}{*}{0}   & Baseline & 0.2945 & 0.2940 & 0.2945 & 0.2926 \\
-                      & Improved & 0.3885 & 0.4310 & 0.3885 & 0.3962 \\
-\midrule
-\multirow{2}{*}{10}  & Baseline & 0.2955 & 0.2953 & 0.2955 & 0.2936 \\
-                      & Improved & 0.3905 & 0.4259 & 0.3905 & 0.3957 \\
-\midrule
-\multirow{2}{*}{42}  & Baseline & 0.2970 & 0.2966 & 0.2970 & 0.2950 \\
-                      & Improved & 0.3885 & 0.4310 & 0.3885 & 0.3962 \\
-\midrule
-\multirow{2}{*}{100} & Baseline & 0.2955 & 0.2950 & 0.2955 & 0.2935 \\
-                      & Improved & 0.3885 & 0.4310 & 0.3885 & 0.3962 \\
-\midrule
-\multirow{2}{*}{999} & Baseline & 0.2985 & 0.2984 & 0.2985 & 0.2956 \\
-                      & Improved & 0.3885 & 0.4310 & 0.3885 & 0.3962 \\
-\midrule
-\multicolumn{2}{c}{\textbf{Average Baseline}} & 0.2962 & 0.2959 & 0.2962 & 0.2941 \\
-\multicolumn{2}{c}{\textbf{Average Improved}} & \textbf{0.3889} & \textbf{0.4300} & \textbf{0.3889} & \textbf{0.3961} \\
+Baseline K-Means   & 0.2962 & 0.2959 & 0.2962 & 0.2941 & 0.0058 & 0.0078 \\
+Weighting-only     & \textbf{0.4421} & 0.4250 & \textbf{0.4421} & \textbf{0.4285} & \textbf{0.1769} & \textbf{0.2109} \\
+Pattern-only       & 0.2620 & 0.2632 & 0.2620 & 0.2539 & $-$0.0005 & 0.0013 \\
+Full Method        & 0.3889 & \textbf{0.4300} & 0.3889 & 0.3961 & 0.1009 & 0.1518 \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=0.75\textwidth]{figures/q5_comparison.png}
-\caption{Average performance comparison across 5 seeds.}
+\includegraphics[width=0.85\textwidth]{figures/q5_comparison.png}
+\caption{Ablation study: average performance comparison across 5 seeds.}
 \end{figure}
 
 \subsection{Analysis}
 
 \begin{itemize}
-    \item \textbf{Consistent improvement:} The improved method outperforms the baseline across all seeds and all metrics. Average accuracy increases from 29.6\% to 38.9\% (+9.3 pp), and F1 from 29.4\% to 39.6\% (+10.2 pp). Precision sees the largest relative gain (29.6\% $\to$ 43.0\%).
-    \item \textbf{Feature weighting is key:} Association rule mining reveals that \texttt{ram} (weight=3.0), \texttt{three\_g} (2.76), and \texttt{fc} (2.31) are the most class-discriminative features. Upweighting these features helps K-Means focus on dimensions that actually separate the price classes, rather than treating noise features equally.
-    \item \textbf{Pattern features add structural information:} The 20 binary pattern features encode class-specific co-occurrence patterns (e.g., \{fc\_low, ram\_low, pc\_low\} for class 0; \{ram\_high, three\_g\_high, four\_g\_high\} for class 3). These features inject discrete structural knowledge that continuous features alone cannot capture.
-    \item \textbf{Limitations:} Even with enhancement, 38.9\% accuracy remains far below the SVM's 97\%. K-Means is inherently limited by its assumption of spherical clusters and its unsupervised nature. The improvement demonstrates that association rule mining can meaningfully guide clustering, but cannot replace the power of supervised learning with non-linear kernels for this dataset.
-    \item \textbf{Stability:} The improved method shows very low variance across seeds (std=0.0009 for accuracy), compared to baseline (std=0.0016). The rule-guided features create more consistent cluster structure.
+    \item \textbf{Feature weighting is the dominant component.} The weighting-only variant achieves the best accuracy (44.2\%) and ARI (0.177), outperforming even the full method (38.9\%, ARI=0.101). This reveals that \texttt{ram} (weight=3.0), \texttt{three\_g} (2.76), and \texttt{fc} (2.31) are the key discriminative features, and simply upweighting them provides the largest clustering improvement (+14.6 pp accuracy over baseline).
+    \item \textbf{Pattern features alone hurt performance.} The pattern-only variant (26.2\%) performs \textit{worse} than baseline (29.6\%), with ARI near zero. This indicates that appending 20 binary pattern features to the 20 original features introduces noise that dilutes the continuous feature signal. The discrete pattern features create artificial cluster structure that does not align with the true classes.
+    \item \textbf{The full method is a compromise.} Combining weighting and patterns (38.9\%) is better than baseline but worse than weighting alone. The pattern features partially counteract the benefit of feature weighting by adding noisy dimensions. This is a valuable negative finding: \textbf{more features is not always better}, even when those features encode class-related information.
+    \item \textbf{Clustering-native metrics confirm the trend.} ARI and NMI follow the same ranking as classification metrics (weighting-only $>$ full $>$ baseline $>$ pattern-only), providing evidence that the cluster \textit{structure itself} improves, not just the post-hoc label mapping.
+    \item \textbf{Limitations.} Even the best variant (44.2\%) remains far below supervised SVM (97\%). K-Means cannot capture non-linear decision boundaries regardless of feature engineering. The semi-supervised nature of this approach (using labels for rule mining) is also a limitation for purely unsupervised settings.
 \end{itemize}
 
 \end{document}
