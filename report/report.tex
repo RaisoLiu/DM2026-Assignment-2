@@ -79,7 +79,7 @@ Rank & Setting & Accuracy & Precision & Recall & F1-score \\
 \section{Q2: SVM Classification}
 %==============================================================================
 
-We use the \texttt{mobile\_price.csv} dataset (2000 samples, 20 features, 4 balanced classes). Data is split 60/20/20 into train/validation/test sets (\texttt{random\_state=42}). We use \texttt{sklearn.svm.SVC} with the default RBF kernel ($\gamma = \text{scale}$). We use raw features without additional standardization; the default $\gamma = \text{scale}$ adapts to feature variance, and empirical results are strong. In general practice, standardization remains a reasonable and common preprocessing step. F1-score uses \texttt{macro} averaging throughout.
+We use the \texttt{mobile\_price.csv} dataset (2000 samples, 20 features, 4 balanced classes). Data is split 60/20/20 into train/validation/test sets (\texttt{random\_state=42}). We use \texttt{sklearn.svm.SVC} with an RBF kernel and $\gamma=\text{scale}$. This experiment keeps the raw feature representation fixed because it gives strong empirical validation/test performance. However, $\gamma=\text{scale}$ is only a global kernel-coefficient heuristic and does not replace per-feature standardization; standardizing features remains a reasonable additional preprocessing variant. F1-score uses \texttt{macro} averaging throughout.
 
 \subsection{2(a) SVM with C=1.0}
 
@@ -130,10 +130,17 @@ C & Train Acc & Train F1 & Val Acc & Val F1 & Test Acc & Test F1 \\
 
 \textbf{Best C = 100} (selected by highest validation accuracy = 95.5\%).
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.55\textwidth]{figures/q2_confusion_matrix.png}
+\caption{Test confusion matrix for the validation-selected SVM ($C=100$). Most errors occur between adjacent price ranges, with no extreme confusion between the lowest and highest classes.\label{fig:svm-confusion}}
+\end{figure}
+
 \begin{itemize}
     \item \textbf{Underfitting at small C:} With $C \leq 0.01$, the SVM's decision boundary is overly constrained, yielding accuracy near random chance (25\% for 4 classes). The margin is too wide and misclassifies most samples.
     \item \textbf{Optimal range:} Performance improves dramatically from $C=0.1$ ($\sim$89\%) to $C=1.0$ ($\sim$95\%). Beyond $C=1$, training accuracy continues climbing (reaching 99.8\% at $C=10000$) while validation accuracy peaks at $C=100$ (95.5\%) and then declines --- a classic overfitting signal.
     \item \textbf{C=100 balances fit and generalization:} The train--validation gap is moderate (2.25\%), and test performance is strong (97.0\% accuracy, 97.0\% F1). Although $C \in \{10, 1000, 10000\}$ achieve the same test accuracy, $C=100$ has the best validation score, making it the most reliable choice without peeking at test data.
+    \item \textbf{Errors are mostly ordinal-neighbor mistakes:} The confusion matrix shows only 12 test errors out of 400 samples. They occur between neighboring classes (0/1, 1/2, 2/3), which is expected because \texttt{price\_range} is an ordered label.
 \end{itemize}
 
 %==============================================================================
@@ -228,6 +235,12 @@ After \texttt{StandardScaler}, all features have mean $\approx 0$ and std $= 1$.
 \caption{PCA 2D projection colored by true price-range labels. The first two PCs explain only 16.5\% of total variance. Classes overlap heavily in this projection.\label{fig:pca-true}}
 \end{figure}
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/q4_pca_variance.png}
+\caption{PCA explained-variance spectrum. The first 2 PCs explain 16.5\% of variance, the first 5 explain 37.2\%, and the first 10 explain 63.1\%; 14 PCs are needed to reach 80\% and 16 PCs are needed to reach 90\%.\label{fig:pca-variance}}
+\end{figure}
+
 \subsection{4(c) K-Means on All Standardized Features}
 
 \begin{figure}[H]
@@ -253,7 +266,7 @@ After \texttt{StandardScaler}, all features have mean $\approx 0$ and std $= 1$.
 \subsection{4(e) Observations}
 
 \begin{itemize}
-    \item \textbf{PCA captures very little variance:} The first two principal components explain only 16.5\% of total variance. The 2D scatter plot shows heavy overlap among all 4 classes, indicating that the class structure is distributed across many dimensions rather than being concentrated in the top PCs.
+    \item \textbf{PCA captures very little variance in two dimensions:} The first two principal components explain only 16.5\% of total variance. The full spectrum (Figure~\ref{fig:pca-variance}) confirms that the information is broadly distributed: even 10 PCs retain only 63.1\% variance, and 14 PCs are needed to reach 80\%. Therefore the 2D projection is useful for visualization but too compressed to preserve the full structure.
     \item \textbf{Both K-Means approaches fail:} ARI values of 0.0060 (all features) and 0.0017 (PCA 2D) are near zero, meaning the clustering is essentially random with respect to the true labels.
     \item \textbf{Dimensionality reduction hurts slightly:} K-Means on all 20 features (ARI=0.0060) marginally outperforms K-Means on 2D PCA (ARI=0.0017), likely consistent with the information loss from reducing to 2D (which retains only 16.5\% of total variance), though PCA variance retention and class separability are not the same thing.
     \item \textbf{K-Means fails to recover label-consistent partitions:} K-Means assumes spherical, equally-sized clusters in Euclidean space, which does not match the structure of this dataset. While supervised SVM (Q2) achieves $>$95\% accuracy by exploiting label information to learn non-linear decision boundaries, K-Means --- as an unsupervised method --- cannot leverage labels and relies solely on Euclidean distance, which is insufficient to separate these price-range classes. This is not an apples-to-apples comparison, but it highlights that label information is critical for this classification task.
@@ -283,6 +296,8 @@ We design two components and evaluate them both independently and jointly via ab
     \item \textbf{Class-Stratified Pattern Features (experimental extension, semi-supervised):} The top 5 most discriminative patterns (ranked by lift $\times$ confidence) are selected from each class's rules, yielding 20 binary features indicating whether a sample matches each class-associated itemset.
 \end{enumerate}
 
+As a control experiment, we also evaluate a \textbf{label-free global rule weighting} variant. It mines FP-Growth rules on all samples without using \texttt{price\_range}, converts global rule lift values into feature weights using the same normalization procedure, and then runs K-Means. This sanity check tests whether the improvement comes from association-rule weighting in general or specifically from the label-guided rule-mining step.
+
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/q5_feature_weights.png}
@@ -300,16 +315,17 @@ All variants are evaluated using the same protocol:
 
 \subsection{Ablation Study}
 
-To isolate the contribution of each component, we compare four variants:
+To isolate the contribution of each component and test the source of the improvement, we compare four method variants plus one label-free control:
 
 \begin{table}[H]
 \centering
-\caption{Ablation study: average performance across 5 seeds\label{tab:ablation}}
+\caption{Ablation study and sanity check: average performance across 5 seeds\label{tab:ablation}}
 \begin{tabular}{lcccccc}
 \toprule
 Method & Accuracy & Precision & Recall & F1 & ARI & NMI \\
 \midrule
 Baseline K-Means   & 0.2962 & 0.2959 & 0.2962 & 0.2941 & 0.0058 & 0.0078 \\
+Global-rule weighting & 0.2660 & 0.2685 & 0.2660 & 0.2606 & 0.0008 & 0.0025 \\
 Weighting-only     & \textbf{0.4421} & 0.4250 & \textbf{0.4421} & \textbf{0.4285} & \textbf{0.1769} & \textbf{0.2109} \\
 Pattern-only       & 0.2620 & 0.2632 & 0.2620 & 0.2539 & $-$0.0005 & 0.0013 \\
 Full Method        & 0.3889 & \textbf{0.4300} & 0.3889 & 0.3961 & 0.1009 & 0.1518 \\
@@ -320,7 +336,7 @@ Full Method        & 0.3889 & \textbf{0.4300} & 0.3889 & 0.3961 & 0.1009 & 0.151
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/q5_comparison.png}
-\caption{Ablation study: average performance comparison across 5 seeds.\label{fig:ablation-comparison}}
+\caption{Ablation study and label-free sanity check: average performance comparison across 5 seeds.\label{fig:ablation-comparison}}
 \end{figure}
 
 \begin{figure}[H]
@@ -350,9 +366,10 @@ Improvement & +14.6\,pp & +12.9\,pp & +14.6\,pp & +13.4\,pp & +0.171 & +0.203 \\
 
 \begin{itemize}
     \item \textbf{Feature weighting is the dominant component.} The weighting-only variant achieves the best accuracy (44.2\%) and ARI (0.177), outperforming the full method (38.9\%, ARI=0.101) and baseline (29.6\%, ARI=0.006). The key discriminative features --- \texttt{ram} (weight=3.0), \texttt{three\_g} (2.76), and \texttt{fc} (2.31) --- are upweighted by the rule-derived importance scores, providing a +14.6 pp accuracy improvement over baseline with no additional feature dimensions. This approach is best understood as a semi-supervised enhancement of K-Means: the labels guide the rule-mining step (feature engineering), while the clustering step itself remains purely unsupervised.
+    \item \textbf{Label-free rule weighting is a failed sanity check.} Global rule weighting mines 72 frequent itemsets and 39 rules without labels, but reaches only 26.6\% accuracy and ARI=0.0008, below the original K-Means baseline. This shows that the gain is not caused by arbitrary association-rule weighting; it depends on class-stratified, label-guided rule mining. Therefore, the proposed method should be interpreted as a semi-supervised enhancement of K-Means rather than a purely unsupervised clustering method.
     \item \textbf{Pattern features alone hurt performance (negative finding).} The pattern-only variant (26.2\%) performs \textit{worse} than baseline (29.6\%), with ARI near zero. Appending 20 binary pattern features to the 20 original features introduces noise that dilutes the continuous feature signal. This is a valuable negative finding: \textbf{more features is not always better}, even when those features encode class-related information.
     \item \textbf{The full method improves over baseline but is not the best variant.} Combining weighting and patterns (38.9\%) substantially improves over baseline (29.6\%), yet falls short of weighting-only (44.2\%) on accuracy, recall, F1, ARI, and NMI. The pattern features partially counteract the benefit of feature weighting. This confirms that the pattern feature component should be discarded in the final method.
-    \item \textbf{Clustering-native metrics confirm the ranking.} ARI and NMI follow the same ordering as classification metrics (weighting-only $>$ full $>$ baseline $>$ pattern-only), providing evidence that the cluster \textit{structure itself} improves, not just the post-hoc label mapping. The per-seed plots (Figure~\ref{fig:per-seed}) show this ranking is consistent across all 5 random seeds.
+    \item \textbf{Clustering-native metrics confirm the ranking.} ARI and NMI follow the same overall ranking as classification metrics (weighting-only $>$ full $>$ baseline $>$ global-rule weighting $\approx$ pattern-only), providing evidence that the cluster \textit{structure itself} improves, not just the post-hoc label mapping. The per-seed plots (Figure~\ref{fig:per-seed}) show this ranking is consistent across all 5 random seeds.
     \item \textbf{Limitations.} Even the best variant (44.2\%) remains far below supervised SVM (97\%). K-Means cannot capture non-linear decision boundaries regardless of feature engineering. The semi-supervised nature of this approach (using labels for rule mining) is also a limitation for purely unsupervised settings.
 \end{itemize}
 
