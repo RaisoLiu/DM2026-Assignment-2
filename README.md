@@ -30,7 +30,7 @@ Each notebook can be executed via Jupyter or from the command line:
 jupyter nbconvert --to notebook --execute <notebook_name>.ipynb --output <notebook_name>.ipynb
 ```
 
-Figures are saved automatically to `figures/` and copied to `report/figures/`.
+Report figures are saved automatically to `report/figures/`.
 
 To compile the LaTeX report:
 ```bash

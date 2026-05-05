@@ -19,7 +19,7 @@
 \noindent\textbf{GitHub Repository:} \url{https://github.com/RaisoLiu/DM2026-Assignment-2}
 
 %==============================================================================
-\section{Q1: K-Fold Cross-Validation (15 pts)}
+\section{Q1: K-Fold Cross-Validation}
 %==============================================================================
 
 Continuation of Assignment 1 \texttt{Real\_World\_Classification.ipynb}, using the updated \texttt{linear\_model.py} from the course GitHub. The same preprocessing pipeline is reproduced: LabelEncoder on Species, KNNImputer($k=5$), train/test split (70/30, seed=40), and MinMaxScaler (fit on training data only).
@@ -30,7 +30,7 @@ We perform 5-fold CV (\texttt{KFold(n\_splits=5, shuffle=True, random\_state=40)
 
 \begin{table}[H]
 \centering
-\caption{Mean CV accuracy for each (lr, $\lambda$) combination}
+\caption{Mean CV accuracy for each (lr, $\lambda$) combination\label{tab:cv-grid}}
 \begin{tabular}{lcccc}
 \toprule
  & $\lambda=1.0$ & $\lambda=2.0$ & $\lambda=4.0$ & $\lambda=8.0$ \\
@@ -43,13 +43,19 @@ lr=0.5   & 0.7171 & 0.6886 & 0.5229 & 0.4657 \\
 \end{tabular}
 \end{table}
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/q1_cv_heatmap.png}
+\caption{Heatmap of 5-fold CV accuracy across the 4$\times$4 hyperparameter grid. Darker cells indicate lower accuracy; the sharp degradation at lr=0.5 with large $\lambda$ is immediately visible.\label{fig:cv-heatmap}}
+\end{figure}
+
 \subsection{1(b) Top 2 Hyperparameter Settings --- Test Evaluation}
 
 The top 2 settings by CV accuracy are retrained on the full training set and evaluated on the held-out test set (150 samples). Note: the second-best CV accuracy (0.7286) is shared by three settings: (0.01, 2.0), (0.01, 4.0), and (0.1, 2.0). We select (0.1, 2.0) as \#2 by choosing the setting with the largest learning rate (faster convergence) and smallest $\lambda$ (least regularization).
 
 \begin{table}[H]
 \centering
-\caption{Test evaluation for top 2 hyperparameter settings}
+\caption{Test evaluation for top 2 hyperparameter settings\label{tab:cv-top2}}
 \begin{tabular}{llcccc}
 \toprule
 Rank & Setting & Accuracy & Precision & Recall & F1-score \\
@@ -70,16 +76,16 @@ Rank & Setting & Accuracy & Precision & Recall & F1-score \\
 \end{itemize}
 
 %==============================================================================
-\section{Q2: SVM Classification (15 pts)}
+\section{Q2: SVM Classification}
 %==============================================================================
 
-We use the \texttt{mobile\_price.csv} dataset (2000 samples, 20 features, 4 balanced classes). Data is split 60/20/20 into train/validation/test sets (\texttt{random\_state=42}). We use \texttt{sklearn.svm.SVC} with the default RBF kernel ($\gamma = \text{scale}$). Features are used without additional scaling, as the RBF kernel with $\gamma = 1/(n\_\text{features} \cdot \text{Var}(X))$ already adapts to feature variance. F1-score uses \texttt{macro} averaging throughout.
+We use the \texttt{mobile\_price.csv} dataset (2000 samples, 20 features, 4 balanced classes). Data is split 60/20/20 into train/validation/test sets (\texttt{random\_state=42}). We use \texttt{sklearn.svm.SVC} with the default RBF kernel ($\gamma = \text{scale}$). We use raw features without additional standardization; the default $\gamma = \text{scale}$ adapts to feature variance, and empirical results are strong. In general practice, standardization remains a reasonable and common preprocessing step. F1-score uses \texttt{macro} averaging throughout.
 
 \subsection{2(a) SVM with C=1.0}
 
 \begin{table}[H]
 \centering
-\caption{SVM (C=1.0) performance across data splits}
+\caption{SVM (C=1.0) performance across data splits\label{tab:svm-c1}}
 \begin{tabular}{lcc}
 \toprule
 Set & Accuracy & F1 (macro) \\
@@ -97,7 +103,7 @@ We sweep $C \in \{0.001, 0.01, 0.1, 1, 10, 100, 1000, 10000\}$.
 
 \begin{table}[H]
 \centering
-\caption{SVM performance for different C values}
+\caption{SVM performance for different C values\label{tab:svm-sweep}}
 \begin{tabular}{rcccccc}
 \toprule
 C & Train Acc & Train F1 & Val Acc & Val F1 & Test Acc & Test F1 \\
@@ -117,7 +123,7 @@ C & Train Acc & Train F1 & Val Acc & Val F1 & Test Acc & Test F1 \\
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{figures/q2_svm_c_sweep.png}
-\caption{Accuracy and F1 score vs.\ $\log_{10}(C)$ for train, validation, and test sets.}
+\caption{Accuracy and F1 score vs.\ $\log_{10}(C)$ for train, validation, and test sets.\label{fig:svm-sweep}}
 \end{figure}
 
 \subsection{2(c) Best Generalization Performance}
@@ -131,7 +137,7 @@ C & Train Acc & Train F1 & Val Acc & Val F1 & Test Acc & Test F1 \\
 \end{itemize}
 
 %==============================================================================
-\section{Q3: Association Rule Mining (15 pts)}
+\section{Q3: Association Rule Mining}
 %==============================================================================
 
 We filter samples with \texttt{price\_range == 1} (500 samples) and select 4 features: \texttt{ram}, \texttt{int\_memory}, \texttt{px\_width}, \texttt{battery\_power}. Each feature is discretized into low/medium/high using a 3:4:3 \textbf{value range} split:
@@ -149,7 +155,7 @@ FP-Growth finds 8 frequent patterns:
 
 \begin{table}[H]
 \centering
-\caption{Frequent itemsets with support $\geq$ 0.3}
+\caption{Frequent itemsets with support $\geq$ 0.3\label{tab:freq-items}}
 \begin{tabular}{lc}
 \toprule
 Itemset & Support \\
@@ -170,7 +176,7 @@ Itemset & Support \\
 
 \begin{table}[H]
 \centering
-\caption{Association rules meeting all criteria}
+\caption{Association rules meeting all criteria\label{tab:rules}}
 \begin{tabular}{llccc}
 \toprule
 Antecedent & Consequent & Support & Confidence & Lift \\
@@ -183,17 +189,29 @@ px\_width\_medium & ram\_medium & 0.306 & 0.736 & 1.079 \\
 \end{tabular}
 \end{table}
 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/q3_support_bar.png}
+\caption{Support of frequent itemsets. Items involving \texttt{ram\_medium} (red) dominate.\label{fig:support-bar}}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/q3_rule_comparison.png}
+\caption{Support, confidence, and lift for each association rule. The asymmetric confidence between forward and reverse rules is clearly visible.\label{fig:rule-comparison}}
+\end{figure}
+
 \subsection{3(c) Observations}
 
 \begin{itemize}
     \item \textbf{ram\_medium dominates:} 68.2\% of price\_range=1 phones have mid-range RAM, making it the most frequent single item and the anchor of both 2-item frequent patterns. This aligns with the second-lowest price tier having predominantly mid-range specifications.
     \item \textbf{Asymmetric confidence:} \texttt{battery\_power\_medium $\to$ ram\_medium} has 76.8\% confidence, while the reverse has only 46.6\%. This asymmetry arises because ram\_medium has much higher base support (68.2\%), so knowing a phone has medium battery power strongly predicts medium RAM, but not vice versa.
     \item \textbf{Mild positive associations:} All lift values are close to 1.0 (1.08--1.13), indicating that while medium-range features tend to co-occur slightly more than expected by chance, the associations are not dramatically strong. Within this price tier, the four features are somewhat independent.
-    \item Only 2 two-item patterns and 4 rules pass all thresholds, reflecting the relatively uniform distribution of mid-range specifications in this price category.
+    \item Under the assignment thresholds (support $\geq 0.3$, confidence $\geq 0.4$, lift $\geq 0.8$), only 2 two-item patterns and 4 rules are retained. This is consistent with the relatively concentrated mid-range specifications in this price tier, though the high support threshold also limits the number of discoverable patterns.
 \end{itemize}
 
 %==============================================================================
-\section{Q4: PCA and K-Means Clustering (20 pts)}
+\section{Q4: PCA and K-Means Clustering}
 %==============================================================================
 
 All 20 features from \texttt{mobile\_price.csv} are standardized using z-score (\texttt{StandardScaler}). The target variable \texttt{price\_range} (4 classes) is used only for evaluation, not for clustering.
@@ -207,7 +225,7 @@ After \texttt{StandardScaler}, all features have mean $\approx 0$ and std $= 1$.
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.75\textwidth]{figures/q4b_pca_true_labels.png}
-\caption{PCA 2D projection colored by true price-range labels. The first two PCs explain only 16.5\% of total variance. Classes overlap heavily in this projection.}
+\caption{PCA 2D projection colored by true price-range labels. The first two PCs explain only 16.5\% of total variance. Classes overlap heavily in this projection.\label{fig:pca-true}}
 \end{figure}
 
 \subsection{4(c) K-Means on All Standardized Features}
@@ -215,7 +233,7 @@ After \texttt{StandardScaler}, all features have mean $\approx 0$ and std $= 1$.
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.75\textwidth]{figures/q4c_kmeans_all_features.png}
-\caption{K-Means (all 20 features) visualized on PCA 2D plane. ARI = 0.0060.}
+\caption{K-Means (all 20 features) visualized on PCA 2D plane. ARI = 0.0060.\label{fig:kmeans-all}}
 \end{figure}
 
 \subsection{4(d) K-Means on PCA 2D Features}
@@ -223,7 +241,13 @@ After \texttt{StandardScaler}, all features have mean $\approx 0$ and std $= 1$.
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.75\textwidth]{figures/q4d_kmeans_pca_2d.png}
-\caption{K-Means on PCA 2D features. ARI = 0.0017.}
+\caption{K-Means on PCA 2D features. ARI = 0.0017.\label{fig:kmeans-pca}}
+\end{figure}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/q4_contingency.png}
+\caption{Contingency tables: cluster assignment vs.\ true label. Both heatmaps show diffuse distributions across all classes, confirming that K-Means clusters do not align with price-range labels.\label{fig:contingency}}
 \end{figure}
 
 \subsection{4(e) Observations}
@@ -231,12 +255,12 @@ After \texttt{StandardScaler}, all features have mean $\approx 0$ and std $= 1$.
 \begin{itemize}
     \item \textbf{PCA captures very little variance:} The first two principal components explain only 16.5\% of total variance. The 2D scatter plot shows heavy overlap among all 4 classes, indicating that the class structure is distributed across many dimensions rather than being concentrated in the top PCs.
     \item \textbf{Both K-Means approaches fail:} ARI values of 0.0060 (all features) and 0.0017 (PCA 2D) are near zero, meaning the clustering is essentially random with respect to the true labels.
-    \item \textbf{Dimensionality reduction hurts slightly:} K-Means on all 20 features (ARI=0.0060) marginally outperforms K-Means on 2D PCA (ARI=0.0017), as expected since reducing to 2D discards 83.5\% of the variance.
+    \item \textbf{Dimensionality reduction hurts slightly:} K-Means on all 20 features (ARI=0.0060) marginally outperforms K-Means on 2D PCA (ARI=0.0017), likely consistent with the information loss from reducing to 2D (which retains only 16.5\% of total variance), though PCA variance retention and class separability are not the same thing.
     \item \textbf{K-Means fails to recover label-consistent partitions:} K-Means assumes spherical, equally-sized clusters in Euclidean space, which does not match the structure of this dataset. While supervised SVM (Q2) achieves $>$95\% accuracy by exploiting label information to learn non-linear decision boundaries, K-Means --- as an unsupervised method --- cannot leverage labels and relies solely on Euclidean distance, which is insufficient to separate these price-range classes. This is not an apples-to-apples comparison, but it highlights that label information is critical for this classification task.
 \end{itemize}
 
 %==============================================================================
-\section{Q5: Enhancing K-Means with Association Rule Mining (35 pts)}
+\section{Q5: Enhancing K-Means with Association Rule Mining}
 %==============================================================================
 
 \subsection{Motivation and Inspiration}
@@ -252,12 +276,18 @@ Standard K-Means treats all features equally and cannot distinguish discriminati
 
 \subsection{Method Design}
 
+We design two components and evaluate them both independently and jointly via ablation:
+
 \begin{enumerate}
-    \item \textbf{Rule-Guided Feature Weighting (semi-supervised):} All 20 features are discretized (3:4:3 value range split) and association rules are mined \textit{per class} using FP-Growth (\texttt{min\_support=0.3}, confidence $\geq 0.5$, lift $\geq 1.0$). For each original feature, we accumulate the lift values from all rules in which the feature appears across all classes. The resulting importance scores are normalized to weights in $[1.0, 3.0]$ and applied to the standardized features. This step is explicitly label-guided.
-    \item \textbf{Class-Stratified Pattern Features (semi-supervised):} The top 5 most discriminative patterns (ranked by lift $\times$ confidence) are selected from each class's rules, yielding 20 binary features indicating whether a sample matches each class-associated itemset.
+    \item \textbf{Rule-Guided Feature Weighting (primary method, semi-supervised):} All 20 features are discretized (3:4:3 value range split) and association rules are mined \textit{per class} using FP-Growth (\texttt{min\_support=0.3}, confidence $\geq 0.5$, lift $\geq 1.0$). For each original feature, we accumulate the lift values from all rules in which the feature appears across all classes. The resulting importance scores are normalized to weights in $[1.0, 3.0]$ and applied to the standardized features. This step is explicitly label-guided.
+    \item \textbf{Class-Stratified Pattern Features (experimental extension, semi-supervised):} The top 5 most discriminative patterns (ranked by lift $\times$ confidence) are selected from each class's rules, yielding 20 binary features indicating whether a sample matches each class-associated itemset.
 \end{enumerate}
 
-The augmented feature matrix combines 20 weighted original features with 20 scaled pattern features (40 total).
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/q5_feature_weights.png}
+\caption{Rule-derived feature weights. \texttt{ram} (3.00), \texttt{three\_g} (2.76), and \texttt{fc} (2.31) receive the highest weights, indicating they appear most frequently in high-lift class-specific rules.\label{fig:feature-weights}}
+\end{figure}
 
 \subsection{Evaluation Protocol}
 
@@ -274,7 +304,7 @@ To isolate the contribution of each component, we compare four variants:
 
 \begin{table}[H]
 \centering
-\caption{Ablation study: average performance across 5 seeds}
+\caption{Ablation study: average performance across 5 seeds\label{tab:ablation}}
 \begin{tabular}{lcccccc}
 \toprule
 Method & Accuracy & Precision & Recall & F1 & ARI & NMI \\
@@ -290,16 +320,39 @@ Full Method        & 0.3889 & \textbf{0.4300} & 0.3889 & 0.3961 & 0.1009 & 0.151
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/q5_comparison.png}
-\caption{Ablation study: average performance comparison across 5 seeds.}
+\caption{Ablation study: average performance comparison across 5 seeds.\label{fig:ablation-comparison}}
 \end{figure}
 
-\subsection{Analysis}
+\begin{figure}[H]
+\centering
+\includegraphics[width=\textwidth]{figures/q5_per_seed.png}
+\caption{Per-seed accuracy and F1 scores. Weighting-only is consistently the best across all seeds; pattern-only is consistently the worst. Horizontal lines indicate means.\label{fig:per-seed}}
+\end{figure}
+
+\subsection{Analysis and Recommended Method}
+
+The ablation study reveals a clear winner: \textbf{weighting-only is the recommended enhanced method.}
+
+\begin{table}[H]
+\centering
+\caption{Final comparison: Baseline K-Means vs.\ Recommended Method (Weighting-only)\label{tab:final-comparison}}
+\begin{tabular}{lcccccc}
+\toprule
+Method & Accuracy & Precision & Recall & F1 & ARI & NMI \\
+\midrule
+Baseline K-Means & 0.2962 & 0.2959 & 0.2962 & 0.2941 & 0.0058 & 0.0078 \\
+Weighting-only (recommended) & \textbf{0.4421} & \textbf{0.4250} & \textbf{0.4421} & \textbf{0.4285} & \textbf{0.1769} & \textbf{0.2109} \\
+\midrule
+Improvement & +14.6\,pp & +12.9\,pp & +14.6\,pp & +13.4\,pp & +0.171 & +0.203 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \begin{itemize}
-    \item \textbf{Feature weighting is the dominant component.} The weighting-only variant achieves the best accuracy (44.2\%) and ARI (0.177), outperforming even the full method (38.9\%, ARI=0.101). This reveals that \texttt{ram} (weight=3.0), \texttt{three\_g} (2.76), and \texttt{fc} (2.31) are the key discriminative features, and simply upweighting them provides the largest clustering improvement (+14.6 pp accuracy over baseline).
-    \item \textbf{Pattern features alone hurt performance.} The pattern-only variant (26.2\%) performs \textit{worse} than baseline (29.6\%), with ARI near zero. This indicates that appending 20 binary pattern features to the 20 original features introduces noise that dilutes the continuous feature signal. The discrete pattern features create artificial cluster structure that does not align with the true classes.
-    \item \textbf{The full method is a compromise.} Combining weighting and patterns (38.9\%) is better than baseline but worse than weighting alone. The pattern features partially counteract the benefit of feature weighting by adding noisy dimensions. This is a valuable negative finding: \textbf{more features is not always better}, even when those features encode class-related information.
-    \item \textbf{Clustering-native metrics confirm the trend.} ARI and NMI follow the same ranking as classification metrics (weighting-only $>$ full $>$ baseline $>$ pattern-only), providing evidence that the cluster \textit{structure itself} improves, not just the post-hoc label mapping.
+    \item \textbf{Feature weighting is the dominant component.} The weighting-only variant achieves the best accuracy (44.2\%) and ARI (0.177), outperforming the full method (38.9\%, ARI=0.101) and baseline (29.6\%, ARI=0.006). The key discriminative features --- \texttt{ram} (weight=3.0), \texttt{three\_g} (2.76), and \texttt{fc} (2.31) --- are upweighted by the rule-derived importance scores, providing a +14.6 pp accuracy improvement over baseline with no additional feature dimensions. This approach is best understood as a semi-supervised enhancement of K-Means: the labels guide the rule-mining step (feature engineering), while the clustering step itself remains purely unsupervised.
+    \item \textbf{Pattern features alone hurt performance (negative finding).} The pattern-only variant (26.2\%) performs \textit{worse} than baseline (29.6\%), with ARI near zero. Appending 20 binary pattern features to the 20 original features introduces noise that dilutes the continuous feature signal. This is a valuable negative finding: \textbf{more features is not always better}, even when those features encode class-related information.
+    \item \textbf{The full method improves over baseline but is not the best variant.} Combining weighting and patterns (38.9\%) substantially improves over baseline (29.6\%), yet falls short of weighting-only (44.2\%) on accuracy, recall, F1, ARI, and NMI. The pattern features partially counteract the benefit of feature weighting. This confirms that the pattern feature component should be discarded in the final method.
+    \item \textbf{Clustering-native metrics confirm the ranking.} ARI and NMI follow the same ordering as classification metrics (weighting-only $>$ full $>$ baseline $>$ pattern-only), providing evidence that the cluster \textit{structure itself} improves, not just the post-hoc label mapping. The per-seed plots (Figure~\ref{fig:per-seed}) show this ranking is consistent across all 5 random seeds.
     \item \textbf{Limitations.} Even the best variant (44.2\%) remains far below supervised SVM (97\%). K-Means cannot capture non-linear decision boundaries regardless of feature engineering. The semi-supervised nature of this approach (using labels for rule mining) is also a limitation for purely unsupervised settings.
 \end{itemize}
 
